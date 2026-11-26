@@ -1,0 +1,16 @@
+# Build outputs
+build/
+NucMutInt
+NucMutInt.exe
+*.o
+*.obj
+
+# Generated PDBs and PLIP outputs
+*_temp.pdb
+*_outputFolder/
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
