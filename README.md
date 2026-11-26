@@ -8,7 +8,14 @@
 
 **NucMutInt** is a lightweight C++ command-line tool for **in-silico nucleic acid base mutation** and **protein–nucleic acid interaction difference analysis**.
 
-Given a protein–DNA/RNA complex in PDB format, NucMutInt replaces specified nucleotide bases in place while preserving the sugar-phosphate backbone, then invokes [PLIP](https://github.com/pharmai/plip) to compare non-covalent interactions before and after mutation and exports a structured Markdown report.
+Given a protein–DNA/RNA complex in PDB format, NucMutInt replaces specified nucleotide bases in place while preserving the sugar-phosphate backbone, checks for steric clashes, and invokes [PLIP](https://github.com/pharmai/plip) to compare non-covalent interactions before and after mutation into a structured Markdown report.
+
+## Why NucMutInt?
+
+- **End-to-End Single-Command Workflow**: Combines in-place base mutation, steric clash detection, dual PLIP runs, and XML diffing into one CLI call—eliminating manual glue scripts between separate modeling and profiling tools.
+- **Ultra-Lightweight & Fast**: Pure C++17 with minimal dependencies (header-only Eigen + bundled TinyXML-2). Compiles in seconds with minimal runtime overhead, making it easy to embed in high-throughput screening pipelines.
+- **Practical Support for Modified Nucleotides (`HETATM`)**: Handles non-standard bases commonly found in crystal structures (e.g., `P2U`, `EDA`) via custom glycosidic alignment and automatic temporary-chain handling for PLIP without polluting the final diff.
+- **Interpretable, Quantitative Output**: Reports exact residue-level interaction gains/losses with distances, angles, and van der Waals clash warnings—ideal for rapid mutational screening and binding-site inspection.
 
 ## Features
 
