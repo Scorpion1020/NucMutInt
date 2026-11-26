@@ -33,6 +33,93 @@ using Residue = vector<Atom>;
 using Chain = map<int, Residue>;      // Residue ID -> Residue
 using Structure = map<char, Chain>;   // Chain ID -> Chain
 
+double GetVdwRadius(const string& atomName) {
+    if (atomName.empty()) {
+        return 1.70;
+    }
+    char elem = static_cast<char>(toupper(static_cast<unsigned char>(atomName[0])));
+    if (isdigit(static_cast<unsigned char>(elem)) && atomName.size() > 1) {
+        elem = static_cast<char>(toupper(static_cast<unsigned char>(atomName[1])));
+    }
+    switch (elem) {
+        case 'C': return 1.70;
+        case 'N': return 1.55;
+        case 'O': return 1.52;
+        case 'P': return 1.80;
+        case 'S': return 1.80;
+        case 'F': return 1.47;
+        case 'H': return 1.20;
+        default:  return 1.70;
+    }
+}
+
+bool IsHydrogen(const string& atomName) {
+    if (atomName.empty()) {
+        return false;
+    }
+    if (atomName[0] == 'H') {
+        return true;
+    }
+    return isdigit(static_cast<unsigned char>(atomName[0])) && atomName.size() > 1 && atomName[1] == 'H';
+}
+
+string FormatAtomLabel(const Atom& atom) {
+    return atom.resName + ":" + string(1, atom.chainID) + ":" + to_string(atom.resID) + ":" + atom.atomName;
+}
+
+vector<Clash> DetectStericClashes(const Structure& structure,
+                                  const set<pair<char, int>>& mutatedResidues,
+                                  double clashFactor = 0.70) {
+    static const set<string> backboneAtoms = {
+        "P", "OP1", "OP2", "O2'", "O3'", "O5'", "C1'", "C2'", "C3'", "C4'", "C5'", "O4'"
+    };
+
+    vector<Clash> clashes;
+    for (const auto& [mChain, mResID] : mutatedResidues) {
+        auto chainIt = structure.find(mChain);
+        if (chainIt == structure.end()) continue;
+        auto resIt = chainIt->second.find(mResID);
+        if (resIt == chainIt->second.end()) continue;
+
+        for (const auto& mAtom : resIt->second) {
+            if (IsHydrogen(mAtom.atomName) || backboneAtoms.count(mAtom.atomName)) {
+                continue;
+            }
+            const double r1 = GetVdwRadius(mAtom.atomName);
+
+            for (const auto& [oChain, chain] : structure) {
+                for (const auto& [oResID, oRes] : chain) {
+                    if (oChain == mChain && oResID == mResID) {
+                        continue;
+                    }
+                    for (const auto& oAtom : oRes) {
+                        if (IsHydrogen(oAtom.atomName) || oAtom.resName == "HOH") {
+                            continue;
+                        }
+                        const double dx = mAtom.x - oAtom.x;
+                        const double dy = mAtom.y - oAtom.y;
+                        const double dz = mAtom.z - oAtom.z;
+                        const double distSq = dx * dx + dy * dy + dz * dz;
+                        if (distSq > 16.0) {
+                            continue;
+                        }
+                        const double vdwSum = r1 + GetVdwRadius(oAtom.atomName);
+                        const double dist = sqrt(distSq);
+                        if (dist < clashFactor * vdwSum) {
+                            clashes.push_back({FormatAtomLabel(mAtom), FormatAtomLabel(oAtom), dist, vdwSum});
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    sort(clashes.begin(), clashes.end(), [](const Clash& a, const Clash& b) {
+        return a.distance < b.distance;
+    });
+    return clashes;
+}
+
 string trim(const string& str) {
     size_t first = str.find_first_not_of(" \t\r\n");
     size_t last = str.find_last_not_of(" \t\r\n");
@@ -481,6 +568,7 @@ int main(int argc, char** argv) {
     }
 
     string suffix;
+    set<pair<char, int>> mutatedResidues;
     for (int i = 2; i < argc; i += 4) {
         string chainID = argv[i];
         int resID_begin = stoi(argv[i + 1]);
@@ -498,6 +586,9 @@ int main(int argc, char** argv) {
 
         suffix += "_" + chainID + "_" + to_string(resID_begin) + "_" + to_string(resID_end) + "_" + seq;
         HelixFromTmpl(structure, chainID, resID_begin, resID_end, seq);
+        for (int r = resID_begin; r <= resID_end; ++r) {
+            mutatedResidues.insert({chainID[0], r});
+        }
     }
 
     fs::path outputPath = inputPath.stem().string() + suffix + inputPath.extension().string();
@@ -509,6 +600,19 @@ int main(int argc, char** argv) {
     WritePDB(structure, outfile);
     outfile.close();
     cout << "Mutated PDB file generated as " << outputPath.filename() << "." << endl;
+
+    vector<Clash> clashes = DetectStericClashes(structure, mutatedResidues);
+    if (clashes.empty()) {
+        cout << "[Clash Check] No severe steric clashes detected on mutated bases." << endl;
+    } else {
+        cout << "[Clash Check] Warning: " << clashes.size()
+             << " steric clash(es) detected (dist < 0.70 * VdW sum):" << endl;
+        for (const auto& c : clashes) {
+            cout << "  " << c.mutatedAtom << " <-> " << c.neighborAtom
+                 << " (" << fixed << setprecision(2) << c.distance
+                 << " A, VdW sum: " << c.vdwSum << " A)" << endl;
+        }
+    }
 
     string outdir = outputPath.string() + "_outputFolder";
     bool origHasHet = HasHETATM(originalStructure);
@@ -550,7 +654,7 @@ int main(int argc, char** argv) {
     InteractionMap mutMap = parseReport(outdir + "/mutated/report.xml");
 
     compareInteractionsByType(oriMap, mutMap, copiedChain);
-    writeInteractionsToMarkdown(oriMap, mutMap, copiedChain, outdir + "/report.md");
+    writeInteractionsToMarkdown(oriMap, mutMap, copiedChain, outdir + "/report.md", clashes);
 
     return 0;
 }

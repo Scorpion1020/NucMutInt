@@ -1,5 +1,6 @@
 # NucMutInt
 
+[![CI](https://github.com/Scorpion1020/NucMutInt/actions/workflows/ci.yml/badge.svg)](https://github.com/Scorpion1020/NucMutInt/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C.svg)](https://en.cppreference.com/w/cpp/17)
 
@@ -24,7 +25,8 @@ Given a protein–DNA/RNA complex in PDB format, NucMutInt replaces specified nu
   - Salt bridges (`salt_bridges`)
   - Hydrophobic interactions (`hydrophobic_interactions`)
   - Water bridges (`water_bridges`)
-- **Markdown report export**: Outputs both console summary and `<mutated_pdb>_outputFolder/report.md`.
+- **Steric clash check**: Automatically scans mutated base heavy atoms against neighboring protein/nucleic acid atoms using Bondi van der Waals radii ($d < 0.70 \times (R_1 + R_2)$) and reports potential clashes.
+- **Markdown tabular report**: Outputs both console summary and `<mutated_pdb>_outputFolder/report.md` with structured tables including interaction distances, donor/ring angles, and clash warnings.
 
 ## Directory Structure
 

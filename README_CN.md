@@ -1,5 +1,6 @@
 # NucMutInt
 
+[![CI](https://github.com/Scorpion1020/NucMutInt/actions/workflows/ci.yml/badge.svg)](https://github.com/Scorpion1020/NucMutInt/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C.svg)](https://en.cppreference.com/w/cpp/17)
 
@@ -24,7 +25,8 @@
   - 盐桥（`salt_bridges`）
   - 疏水相互作用（`hydrophobic_interactions`）
   - 水桥（`water_bridges`）
-- **Markdown 报告导出**：同时在终端输出对比结果，并生成 `<mutated_pdb>_outputFolder/report.md`。
+- **空间位阻（Steric Clash）检测**：突变完成后自动基于 Bondi 范德华半径扫描新碱基重原子与周边蛋白/核酸原子的距离（$d < 0.70 \times (R_1 + R_2)$），在终端和报告中提示潜在碰撞。
+- **Markdown 表格化报告**：同时在终端输出对比结果，并生成 `<mutated_pdb>_outputFolder/report.md`，以表格形式展示相互作用距离、角度及位阻检测结果。
 
 ## 目录结构
 
